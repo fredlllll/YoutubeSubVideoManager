@@ -44,10 +44,19 @@ namespace YoutubeSubVideoManager
         static async Task Init()
         {
             UserCredential credential;
-            using (var stream = new FileStream("client_secret.json", FileMode.Open, FileAccess.Read))
+            if (!File.Exists("client_secrets.json"))
             {
+                throw new Exception("client_secrets.json not found");
+            }
+            using (var stream = new FileStream("client_secrets.json", FileMode.Open, FileAccess.Read))
+            {
+                var googleClientSecrets = GoogleClientSecrets.FromStream(stream);
+                if (googleClientSecrets == null)
+                {
+                    throw new Exception("Could not load secrets from client_secrets.json");
+                }
                 credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                    GoogleClientSecrets.FromStream(stream).Secrets,
+                    googleClientSecrets.Secrets,
                     // This OAuth 2.0 access scope allows for full read/write access to the
                     // authenticated user's account.
                     new[] { YouTubeService.Scope.Youtube },
