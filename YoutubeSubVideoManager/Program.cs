@@ -44,7 +44,7 @@ namespace YoutubeSubVideoManager
         static async Task Init()
         {
             UserCredential credential;
-            using (var stream = new FileStream("client_secret_674135367122-i1rt797i21937mroh8554rbrfeebjtnt.apps.googleusercontent.com.json", FileMode.Open, FileAccess.Read))
+            using (var stream = new FileStream("client_secret.json", FileMode.Open, FileAccess.Read))
             {
                 credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
                     GoogleClientSecrets.FromStream(stream).Secrets,
