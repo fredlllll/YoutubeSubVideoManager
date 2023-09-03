@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "YoutubeSubVideoManager": {
+      "commandName": "Project",
+      "commandLineArgs": "--after-video-id 7NiBI1QXaBE --video-count 5 --only-cache"
+    }
+  }
+}
