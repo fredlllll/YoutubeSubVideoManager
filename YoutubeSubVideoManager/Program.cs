@@ -90,7 +90,7 @@ namespace YoutubeSubVideoManager
             {
                 foreach (var idAndVideo in channel.videos)
                 {
-                    if (idAndVideo.Value.PublishDate > svm.DelimiterVideo.Video.PublishDate)
+                    if (idAndVideo.Value.PublishDate > svm.DelimiterVideo.PublishDate)
                     {
                         videosAfterDelimiter.Add(idAndVideo.Value);
                     }

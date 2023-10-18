@@ -9,67 +9,30 @@ using System.Threading.Tasks;
 
 namespace YoutubeSubVideoManager
 {
-    internal class SubVideoManager
+    internal class SubVideoManager : LoadStoreable
     {
-        DelimiterVideo delimiterVideo;
-        public DelimiterVideo DelimiterVideo { get { return delimiterVideo; } }
-        List<Channel> subscriptionChannels = new();
+        Video delimiterVideo;
+        public Video DelimiterVideo { get { return delimiterVideo; } }
+        readonly List<Channel> subscriptionChannels = new();
         public IEnumerable<Channel> Subscriptions { get { return subscriptionChannels; } }
 
         public SubVideoManager()
         {
-            delimiterVideo = new DelimiterVideo(Program.cmdLineArgs.AfterVideoId);
+            delimiterVideo = new Video(Program.cmdLineArgs.AfterVideoId);
         }
 
-        public void Load()
+        public override void Load()
         {
             delimiterVideo.Load();
-            LoadSubscriptionChannels();
+            base.Load();
         }
 
         string GetCacheFilePath()
         {
-            return Path.Combine("cache", "subscriptionChannels.json");
+            return Path.Combine(Util.CacheDirectory, "subscriptionChannels.json");
         }
 
-        public void Store()
-        {
-            Directory.CreateDirectory("cache");
-
-            delimiterVideo.Store();
-
-            foreach (var channel in subscriptionChannels)
-            {
-                channel.Store();
-            }
-
-            List<Tuple<string, string>> channels = subscriptionChannels.Select(x => new Tuple<string, string>(x.Id, x.Title)).ToList();
-            File.WriteAllText(GetCacheFilePath(), JsonSerializer.Serialize(channels));
-        }
-
-        void LoadSubscriptionChannels()
-        {
-            if (Program.cmdLineArgs.OnlyCache)
-            {
-                LoadSubscriptionChannelsFromCache();
-            }
-            else
-            {
-                if (Program.cmdLineArgs.NoCache)
-                {
-                    LoadSubscriptionChannelsFromYoutube();
-                }
-                else
-                {
-                    if (!LoadSubscriptionChannelsFromCache())
-                    {
-                        LoadSubscriptionChannelsFromYoutube();
-                    }
-                }
-            }
-        }
-
-        bool LoadSubscriptionChannelsFromCache()
+        protected override bool LoadFromCache()
         {
             var filePath = GetCacheFilePath();
             if (!File.Exists(filePath))
@@ -89,7 +52,7 @@ namespace YoutubeSubVideoManager
             return true;
         }
 
-        void LoadSubscriptionChannelsFromYoutube()
+        protected override void LoadFromYoutube()
         {
             var part = new Repeatable<string>(new string[] { "snippet" });
 
@@ -113,6 +76,22 @@ namespace YoutubeSubVideoManager
             {
                 x.Load();
             });
+        }
+
+        public override void Store()
+        {
+            Directory.CreateDirectory(Util.CacheDirectory);
+
+            delimiterVideo.Store();
+
+            Parallel.ForEach(subscriptionChannels, (x) =>
+            {
+                x.Store();
+            });
+
+            //store tuple of id and title
+            List<Tuple<string, string>> channels = subscriptionChannels.Select(x => new Tuple<string, string>(x.Id, x.Title)).ToList();
+            File.WriteAllText(GetCacheFilePath(), JsonSerializer.Serialize(channels));
         }
     }
 }

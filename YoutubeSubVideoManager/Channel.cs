@@ -5,10 +5,11 @@ using System.Text.Json;
 
 namespace YoutubeSubVideoManager
 {
-    internal class Channel
+    internal class Channel : LoadStoreable
     {
         public readonly Dictionary<string, Video> videos = new();
         DateTime latestVideoPublished = DateTime.MinValue;
+        object lastVideoPublishedLock = new object();
 
         public string Id { get; }
         public string Title { get; }
@@ -18,41 +19,9 @@ namespace YoutubeSubVideoManager
             Title = title;
         }
 
-        string GetCacheDirectory()
-        {
-            return Path.Combine("cache", $"channel_{Id}");
-        }
-
         string GetCacheFilePath()
         {
-            return Path.Combine(GetCacheDirectory(), $"channel_{Id}.json");
-        }
-
-        string GetVideoCacheFilePath(string videoId)
-        {
-            return Path.Combine(GetCacheDirectory(), $"video_{videoId}.json");
-        }
-
-        public void Load()
-        {
-            if (Program.cmdLineArgs.OnlyCache)
-            {
-                LoadFromCache();
-            }
-            else
-            {
-                if (Program.cmdLineArgs.NoCache)
-                {
-                    LoadFromYoutube();
-                }
-                else
-                {
-                    if (!LoadFromCache())
-                    {
-                        LoadFromYoutube();
-                    }
-                }
-            }
+            return Path.Combine(Util.CacheDirectory, $"channel_{Id}.json");
         }
 
         /// <summary>
@@ -60,7 +29,7 @@ namespace YoutubeSubVideoManager
         /// </summary>
         /// <returns>returns false if no cache was available</returns>
         /// <exception cref="Exception"></exception>
-        bool LoadFromCache()
+        protected override bool LoadFromCache()
         {
             var filePath = GetCacheFilePath();
             if (!File.Exists(filePath))
@@ -70,29 +39,34 @@ namespace YoutubeSubVideoManager
             List<string>? channelVideos = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(filePath));
             if (channelVideos == null)
             {
-                throw new Exception("cant load channel from " + filePath);
+                return false;
             }
             foreach (var videoId in channelVideos)
             {
-                filePath = GetVideoCacheFilePath(videoId);
-                var video = Video.FromFile(filePath);
-                videos[videoId] = video;
-                latestVideoPublished = video.PublishDate > latestVideoPublished ? video.PublishDate : latestVideoPublished;
+                videos[videoId] = new Video(videoId);
             }
+            Parallel.ForEach(videos, x =>
+            {
+                x.Value.Load();
+                lock (lastVideoPublishedLock)
+                {
+                    latestVideoPublished = x.Value.PublishDate > latestVideoPublished ? x.Value.PublishDate : latestVideoPublished;
+                }
+            });
             return true;
         }
 
-        public void Store()
+        public override void Store()
         {
-            Directory.CreateDirectory(GetCacheDirectory());
+            Directory.CreateDirectory(Util.CacheDirectory);
             File.WriteAllText(GetCacheFilePath(), JsonSerializer.Serialize(videos.Keys));
-            foreach (var video in videos)
+            Parallel.ForEach(videos, x =>
             {
-                video.Value.ToFile(GetVideoCacheFilePath(video.Value.Id));
-            }
+                x.Value.Store();
+            });
         }
 
-        void LoadFromYoutube()
+        protected override void LoadFromYoutube()
         {
             var part = new Repeatable<string>(new string[] { "contentDetails" });
 
@@ -127,7 +101,8 @@ namespace YoutubeSubVideoManager
                     var videoPublishDate = video.ContentDetails.VideoPublishedAtDateTimeOffset?.UtcDateTime;
                     if (!videos.ContainsKey(videoId) && videoPublishDate != null)
                     {
-                        var vid = new Video(videoId, videoPublishDate.Value);
+                        var vid = new Video(videoId);
+                        vid.PublishDate = videoPublishDate.Value;
                         videos.Add(vid.Id, vid);
                         latestVideoPublished = vid.PublishDate > latestVideoPublished ? vid.PublishDate : latestVideoPublished;
                     }

@@ -1,37 +1,64 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
+﻿using Google.Apis.Util;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace YoutubeSubVideoManager
 {
-    public class Video
+    public class Video : LoadStoreable
     {
-        public Video(string id, DateTime publishDate)
+        private class VideoDTO
         {
-            Id = id;
-            PublishDate = publishDate;
+            public string id = string.Empty;
+            public DateTime publishDate;
         }
 
-        public static Video FromFile(string filePath)
+        public string Id { get { return dto.id; } }
+        public DateTime PublishDate { get { return dto.publishDate; } set { dto.publishDate = value; } }
+
+        private VideoDTO dto;
+
+        public Video(string id)
         {
-            Video? result = JsonSerializer.Deserialize<Video>(File.ReadAllText(filePath));
-            if (result == null)
+            dto = new VideoDTO
             {
-                throw new Exception("couldnt load video " + filePath);
-            }
-            return result;
+                id = id
+            };
         }
 
-        public void ToFile(string filePath)
+        string GetCacheFilePath()
         {
-            File.WriteAllText(filePath, JsonSerializer.Serialize<Video>(this));
+            return Path.Combine(Util.CacheDirectory, $"video_{Id}.json");
         }
 
-        public string Id { get; }
-        public DateTime PublishDate { get; }
+        protected override bool LoadFromCache()
+        {
+            var filePath = GetCacheFilePath();
+            if (!File.Exists(filePath))
+            {
+                return false;
+            }
+            var tmp = JsonSerializer.Deserialize<VideoDTO>(File.ReadAllText(filePath));
+            if (tmp == null)
+            {
+                return false;
+            }
+            dto = tmp;
+            return true;
+        }
+
+        protected override void LoadFromYoutube()
+        {
+            var part = new Repeatable<string>(new string[] { "snippet" });
+            var listDelimiter = Program.youtubeService.Videos.List(part);
+            listDelimiter.Id = Program.cmdLineArgs.AfterVideoId;
+            var listDelimiterResponse = listDelimiter.Execute();
+            var videoItem = listDelimiterResponse.Items.First();
+            dto = new VideoDTO() { id = videoItem.Id, publishDate = videoItem.Snippet.PublishedAtDateTimeOffset.Value.UtcDateTime };
+        }
+
+        public override void Store()
+        {
+            Directory.CreateDirectory(Util.CacheDirectory);
+            File.WriteAllText(GetCacheFilePath(), JsonSerializer.Serialize<VideoDTO>(dto));
+        }
     }
 }
