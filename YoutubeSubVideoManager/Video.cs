@@ -7,12 +7,12 @@ namespace YoutubeSubVideoManager
     {
         private class VideoDTO
         {
-            public string id = string.Empty;
-            public DateTime publishDate;
+            public string Id { get; set; } = string.Empty;
+            public DateTime PublishDate { get; set; }
         }
 
-        public string Id { get { return dto.id; } }
-        public DateTime PublishDate { get { return dto.publishDate; } set { dto.publishDate = value; } }
+        public string Id { get { return dto.Id; } }
+        public DateTime PublishDate { get { return dto.PublishDate; } set { dto.PublishDate = value; } }
 
         private VideoDTO dto;
 
@@ -20,7 +20,7 @@ namespace YoutubeSubVideoManager
         {
             dto = new VideoDTO
             {
-                id = id
+                Id = id
             };
         }
 
@@ -52,13 +52,14 @@ namespace YoutubeSubVideoManager
             listDelimiter.Id = Program.cmdLineArgs.AfterVideoId;
             var listDelimiterResponse = listDelimiter.Execute();
             var videoItem = listDelimiterResponse.Items.First();
-            dto = new VideoDTO() { id = videoItem.Id, publishDate = videoItem.Snippet.PublishedAtDateTimeOffset.Value.UtcDateTime };
+            dto = new VideoDTO() { Id = videoItem.Id, PublishDate = videoItem.Snippet.PublishedAtDateTimeOffset.Value.UtcDateTime };
         }
 
         public override void Store()
         {
             Directory.CreateDirectory(Util.CacheDirectory);
-            File.WriteAllText(GetCacheFilePath(), JsonSerializer.Serialize<VideoDTO>(dto));
+            string text = JsonSerializer.Serialize<VideoDTO>(dto);
+            File.WriteAllText(GetCacheFilePath(), text);
         }
     }
 }
