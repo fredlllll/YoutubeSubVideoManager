@@ -1,12 +1,9 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
-using Google.Apis.YouTube.v3.Data;
 using Google.Apis.YouTube.v3;
-using Google.Apis.Util;
 using CommandLine.Text;
 using System.Diagnostics;
-using System;
 
 namespace YoutubeSubVideoManager
 {
@@ -115,7 +112,7 @@ namespace YoutubeSubVideoManager
                     UseShellExecute = true
                 };
                 Process.Start(psi);
-                Thread.Sleep(100); //to not completely overwhelm the browser
+                Thread.Sleep(1000); //to get around youtubes fucking ratelimit
             }
 
             string lastOpenedVideoId = videosAfterDelimiter[videosToOpen - 1].Id;

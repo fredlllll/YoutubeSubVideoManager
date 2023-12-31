@@ -1,11 +1,5 @@
 ﻿using Google.Apis.Util;
-using Google.Apis.YouTube.v3;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace YoutubeSubVideoManager
 {
