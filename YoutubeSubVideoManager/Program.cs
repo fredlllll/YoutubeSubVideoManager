@@ -133,7 +133,7 @@ namespace YoutubeSubVideoManager
                 db.Channels.ExecuteDelete();
             }
 
-            if (db.Channels.Count() == 0)
+            if (!db.Channels.Any())
             {
                 CreateCache(db);
             }
