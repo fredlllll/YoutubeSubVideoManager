@@ -8,14 +8,14 @@ namespace YoutubeSubVideoManager
         [Option("after-video-id", Required = true, HelpText = "the video after which the videos are supposed to be opened")]
         public string AfterVideoId { get; set; } = "";
 
-        [Option("video-count", Required = true, HelpText = "how many videos you want to open")]
+        [Option("video-count", Required = true, HelpText = "how many videos you want to open", ResourceType = typeof(int), Min = 0)]
         public int VideoCount { get; set; } = 50;
 
-        [Option("only-cache", Required = false, HelpText = "if set, will only use local cache to open videos", SetName = "only-cache")]
-        public bool OnlyCache { get; set; } = false;
+        [Option("opening-interval", Required = false, HelpText = "how many ms are between each opening of a video link", ResourceType = typeof(int), Min = 1, Default = 1000)]
+        public int OpeningInterval { get; set; } = 1000;
 
-        [Option("no-cache", Required = false, HelpText = "if set, will only use api", SetName = "no-cache")]
-        public bool NoCache { get; set; } = false;
+        [Option("drop-cache", Required = false, HelpText = "if set, will only use api", SetName = "drop-cache")]
+        public bool DropCache { get; set; } = false;
 
         [Usage(ApplicationAlias = "YoutubeSubVideoManager")]
         public static IEnumerable<Example> Examples

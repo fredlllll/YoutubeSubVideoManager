@@ -4,13 +4,17 @@ using Google.Apis.Util.Store;
 using Google.Apis.YouTube.v3;
 using CommandLine.Text;
 using System.Diagnostics;
+using YoutubeSubVideoManager.Database.Models;
+using YoutubeSubVideoManager.Database;
+using Microsoft.EntityFrameworkCore;
+using Google.Apis.Util;
 
 namespace YoutubeSubVideoManager
 {
     internal class Program
     {
-        public static YouTubeService youtubeService;
-        public static CommandLineArgs cmdLineArgs;
+        public static YouTubeService? youtubeService;
+        public static CommandLineArgs? cmdLineArgs;
 
         [STAThread]
         static void Main(string[] args)
@@ -70,53 +74,93 @@ namespace YoutubeSubVideoManager
             });
         }
 
+        static void CreateCache(DatabaseContext db)
+        {
+            if (youtubeService == null)
+            {
+                throw new InvalidOperationException("youtube service is null");
+            }
+            Repeatable<string> part = new(["snippet"]);
+
+            var listSubs = youtubeService.Subscriptions.List(part);
+            listSubs.MaxResults = 1000;
+            listSubs.Mine = true;
+            while (true)
+            {
+                var subResponse = listSubs.Execute();
+                foreach (var sub in subResponse.Items)
+                {
+                    db.Add(new Channel()
+                    {
+                        Id = sub.Snippet.ResourceId.ChannelId,
+                        Created = DateTime.Now,
+                        Updated = DateTime.Now,
+                        Title = sub.Snippet.Title,
+                        Videos = new List<Video>()
+                    });
+                }
+                if (subResponse.NextPageToken == null)
+                {
+                    break;
+                }
+                listSubs.PageToken = subResponse.NextPageToken;
+            }
+            db.SaveChanges();
+            foreach (var channel in db.Channels)
+            {
+                channel.LoadVideosFromYoutube(db);
+            }
+        }
+
         static void Run()
         {
-            SubVideoManager svm = new();
-
-            svm.Load();
-            svm.Store();
-
-            //subscriptions and all their videos are now loaded
-            //open x videos after certain video now
-
-            //get videos after delimiter video
-            IEnumerable<Video> subscriptionVideos = Enumerable.Empty<Video>();
-            List<Video> videosAfterDelimiter = new();
-            foreach (var channel in svm.Subscriptions)
+            if (cmdLineArgs == null)
             {
-                foreach (var idAndVideo in channel.videos)
-                {
-                    if (idAndVideo.Value.PublishDate > svm.DelimiterVideo.PublishDate)
-                    {
-                        videosAfterDelimiter.Add(idAndVideo.Value);
-                    }
-                }
+                throw new InvalidOperationException("command line args is null");
+            }
+            if (youtubeService == null)
+            {
+                throw new InvalidOperationException("youtube service is null");
             }
 
-            //sort by date
-            videosAfterDelimiter.Sort((x, y) =>
-            {
-                return x.PublishDate.CompareTo(y.PublishDate);
-            });
+            var db = DatabaseContext.Instance;
+            db.Database.Migrate();
 
-            //oldest video should be first now
-            int videosToOpen = Math.Min(cmdLineArgs.VideoCount, videosAfterDelimiter.Count);
-            
-            for (int i = 0; i < videosToOpen; i++)
+            if (cmdLineArgs.DropCache)
             {
-                var link = $"https://www.youtube.com/watch?v={videosAfterDelimiter[i].Id}";
+                db.Videos.ExecuteDelete();
+                db.Channels.ExecuteDelete();
+            }
+
+            if (db.Channels.Count() == 0)
+            {
+                CreateCache(db);
+            }
+
+            Video delimiterVideo = db.Videos.Where(video => video.Id == cmdLineArgs.AfterVideoId).First();
+
+            var videosAfterDelimiter = db.Videos.Where(video => video.PublishDate > delimiterVideo.PublishDate).OrderBy(video => video.PublishDate);
+
+            string lastOpenedVideoId = "";
+            foreach (var video in videosAfterDelimiter.Take(cmdLineArgs.VideoCount))
+            {
+                Console.WriteLine($"Opening Video {video.Id}({video.Title})");
+                var link = $"https://www.youtube.com/watch?v={video.Id}";
+
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
                     FileName = link,
                     UseShellExecute = true
                 };
                 Process.Start(psi);
-                Thread.Sleep(1000); //to get around youtubes fucking ratelimit
+                lastOpenedVideoId = video.Id;
+                Thread.Sleep(cmdLineArgs.OpeningInterval);//dont overload browser
             }
 
-            string lastOpenedVideoId = videosAfterDelimiter[videosToOpen - 1].Id;
-            File.WriteAllText("lastOpenedVideoId.txt", lastOpenedVideoId);
+            if (lastOpenedVideoId.Length > 0)
+            {
+                File.WriteAllText("lastOpenedVideoId.txt", lastOpenedVideoId);
+            }
         }
 
     }
