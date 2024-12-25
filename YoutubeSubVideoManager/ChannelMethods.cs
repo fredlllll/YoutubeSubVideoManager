@@ -45,6 +45,7 @@ namespace YoutubeSubVideoManager
                 if (first)
                 {
                     Console.WriteLine($"Channel {channel.Id}({channel.Title}) has {response.PageInfo.TotalResults} videos");
+                    first = false;
                 }
                 foreach (var video in response.Items)
                 {
