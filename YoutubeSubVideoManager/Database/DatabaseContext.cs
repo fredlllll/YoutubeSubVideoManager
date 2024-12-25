@@ -19,9 +19,7 @@ namespace YoutubeSubVideoManager.Database
 
         public DatabaseContext()
         {
-            var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            DbPath = Path.Join(path, "YoutubeSubVideoManager", "cache.db");
-            Console.WriteLine("Database path: " + DbPath);
+            DbPath = Util.GetApplicationFilePath("cache.db");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -45,16 +45,17 @@ namespace YoutubeSubVideoManager
         static async Task Init()
         {
             UserCredential credential;
-            if (!File.Exists("client_secrets.json"))
+            string secretsFile = Util.GetApplicationFilePath("client_secrets.json");
+            if (!File.Exists(secretsFile))
             {
-                throw new Exception("client_secrets.json not found");
+                throw new Exception($"{secretsFile} not found");
             }
-            using (var stream = new FileStream("client_secrets.json", FileMode.Open, FileAccess.Read))
+            using (var stream = new FileStream(secretsFile, FileMode.Open, FileAccess.Read))
             {
                 var googleClientSecrets = GoogleClientSecrets.FromStream(stream);
                 if (googleClientSecrets == null)
                 {
-                    throw new Exception("Could not load secrets from client_secrets.json");
+                    throw new Exception($"Could not load secrets from {secretsFile}");
                 }
                 credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
                     googleClientSecrets.Secrets,
@@ -159,7 +160,7 @@ namespace YoutubeSubVideoManager
 
             if (lastOpenedVideoId.Length > 0)
             {
-                File.WriteAllText("lastOpenedVideoId.txt", lastOpenedVideoId);
+                File.WriteAllText(Util.GetApplicationFilePath("lastOpenedVideoId.txt"), lastOpenedVideoId);
             }
         }
 
