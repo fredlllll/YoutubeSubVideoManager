@@ -62,9 +62,9 @@ namespace YoutubeSubVideoManager
                     // This OAuth 2.0 access scope allows for full read/write access to the
                     // authenticated user's account.
                     new[] { YouTubeService.Scope.Youtube },
-                    "iunno",
+                    "user",
                     CancellationToken.None,
-                    new FileDataStore(typeof(Program).ToString())
+                    new FileDataStore(Util.ApplicationFolder)
                 );
             }
 

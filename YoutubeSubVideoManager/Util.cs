@@ -9,11 +9,17 @@ namespace YoutubeSubVideoManager
 {
     public static class Util
     {
+        public static string ApplicationFolder { get; private set; }
+
         public static string GetApplicationFilePath(string subPath)
         {
-            var folder = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "YoutubeSubVideoManager");
-            Directory.CreateDirectory(folder);
-            return Path.Join(folder, subPath);
+            return Path.Join(ApplicationFolder, subPath);
+        }
+
+        static Util()
+        {
+            ApplicationFolder = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "YoutubeSubVideoManager");
+            Directory.CreateDirectory(ApplicationFolder);
         }
     }
 }
