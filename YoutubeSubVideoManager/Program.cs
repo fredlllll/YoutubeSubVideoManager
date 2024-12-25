@@ -107,10 +107,7 @@ namespace YoutubeSubVideoManager
                 listSubs.PageToken = subResponse.NextPageToken;
             }
             db.SaveChanges();
-            foreach (var channel in db.Channels)
-            {
-                channel.LoadVideosFromYoutube(db);
-            }
+            Parallel.ForEach(db.Channels, channel => channel.LoadVideosFromYoutube());
         }
 
         static void Run()
@@ -124,7 +121,7 @@ namespace YoutubeSubVideoManager
                 throw new InvalidOperationException("youtube service is null");
             }
 
-            var db = DatabaseContext.Instance;
+            using var db = new DatabaseContext();
             db.Database.Migrate();
 
             if (cmdLineArgs.DropCache)
@@ -163,6 +160,5 @@ namespace YoutubeSubVideoManager
                 File.WriteAllText(Util.GetApplicationFilePath("lastOpenedVideoId.txt"), lastOpenedVideoId);
             }
         }
-
     }
 }

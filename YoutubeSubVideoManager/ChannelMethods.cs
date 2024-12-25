@@ -1,15 +1,17 @@
 ﻿using Google;
 using Google.Apis.Util;
 using Google.Apis.YouTube.v3.Data;
-using System.Text.Json;
 using YoutubeSubVideoManager.Database;
 
 namespace YoutubeSubVideoManager
 {
     public static class ChannelMethods
     {
-        public static void LoadVideosFromYoutube(this Database.Models.Channel channel, DatabaseContext db)
+        public static void LoadVideosFromYoutube(this Database.Models.Channel channel)
         {
+            using var db = new DatabaseContext();
+            var currentChannel = db.Channels.Where(c => c.Id == channel.Id).First();
+
             if (Program.youtubeService == null)
             {
                 throw new InvalidOperationException("youtube service is null");
@@ -18,7 +20,7 @@ namespace YoutubeSubVideoManager
             Repeatable<string> part = new(["contentDetails", "snippet"]);
 
             var listChannel = Program.youtubeService.Channels.List(part);
-            listChannel.Id = channel.Id;
+            listChannel.Id = currentChannel.Id;
             var channelResponse = listChannel.Execute();
             var uploadPlaylistId = channelResponse.Items.First().ContentDetails.RelatedPlaylists.Uploads;
 
@@ -26,6 +28,7 @@ namespace YoutubeSubVideoManager
             listRequest.PlaylistId = uploadPlaylistId;
             listRequest.MaxResults = 1000;
             bool first = true;
+            List<Database.Models.Video> videos = new();
             while (true)
             {
                 PlaylistItemListResponse response;
@@ -37,16 +40,17 @@ namespace YoutubeSubVideoManager
                 {
                     if (e.Error.Code == 404)
                     {
-                        Console.WriteLine($"Channel {channel.Id}({channel.Title}) has no videos");
+                        Console.WriteLine($"Channel {currentChannel.Id}({currentChannel.Title}) has no videos");
                         break;
                     }
                     throw;
                 }
                 if (first)
                 {
-                    Console.WriteLine($"Channel {channel.Id}({channel.Title}) has {response.PageInfo.TotalResults} videos");
+                    Console.WriteLine($"Channel {currentChannel.Id}({currentChannel.Title}) has {response.PageInfo.TotalResults} videos");
                     first = false;
                 }
+
                 foreach (var video in response.Items)
                 {
                     var videoId = video.ContentDetails.VideoId;
@@ -59,10 +63,10 @@ namespace YoutubeSubVideoManager
                             Created = DateTime.Now,
                             Updated = DateTime.Now,
                             PublishDate = videoPublishDate.Value,
-                            Channel = channel,
+                            Channel = currentChannel,
                             Title = video.Snippet.Title,
                         };
-                        db.Add(vid);
+                        videos.Add(vid);
                     }
                     //playlists seem to be randomly ordered, so there is no way to know if there arent any more new videos in the list
                 }
@@ -72,6 +76,7 @@ namespace YoutubeSubVideoManager
                 }
                 listRequest.PageToken = response.NextPageToken;
             }
+            db.AddRange(videos);
             db.SaveChanges();
         }
     }

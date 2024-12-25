@@ -42,7 +42,5 @@ namespace YoutubeSubVideoManager.Database
         {
             options.UseSqlite($"Data Source={DbPath}");
         }
-
-        public static DatabaseContext Instance { get; } = new DatabaseContext();
     }
 }
