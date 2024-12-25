@@ -8,10 +8,10 @@ namespace YoutubeSubVideoManager
         [Option("after-video-id", Required = true, HelpText = "the video after which the videos are supposed to be opened")]
         public string AfterVideoId { get; set; } = "";
 
-        [Option("video-count", Required = true, HelpText = "how many videos you want to open", ResourceType = typeof(int), Min = 0)]
+        [Option("video-count", Required = true, HelpText = "how many videos you want to open", Min = 0)]
         public int VideoCount { get; set; } = 50;
 
-        [Option("opening-interval", Required = false, HelpText = "how many ms are between each opening of a video link", ResourceType = typeof(int), Min = 1, Default = 1000)]
+        [Option("opening-interval", Required = false, HelpText = "how many ms are between each opening of a video link", Min = 1, Default = 1000)]
         public int OpeningInterval { get; set; } = 1000;
 
         [Option("drop-cache", Required = false, HelpText = "if set, will only use api", SetName = "drop-cache")]
